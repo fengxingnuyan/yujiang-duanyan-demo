@@ -3,38 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>科研题目验证 · 库帕思语匠 × 书生·端砚</title>
-<style>
-:root{color-scheme:light;--ink:#253b39;--green:#305c50;--line:#dce2d8;--muted:#5e716a;--paper:#fafaf6}
-*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif}
-header{display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--line);padding:15px max(5vw,20px);background:white}
-header strong{font:700 22px Georgia,"Songti SC",serif;color:var(--green)}header span,small,.muted{color:var(--muted)}
-main,footer{max-width:890px;margin:auto;padding:28px 22px}main{min-height:65vh}
-h1,h2,h3,p{margin:0 0 14px}h1{font:600 clamp(29px,4vw,42px)/1.35 Georgia,"Songti SC",serif}
-h2{font-size:21px}h3{font-size:17px}.context{display:flex;gap:8px 24px;flex-wrap:wrap;margin:14px 0 24px;padding:12px 0;border-block:1px solid var(--line);font-size:14px}
-.panel{padding:clamp(18px,4vw,32px);background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
-.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.row h2{margin:0}
-label{display:block;font-weight:600;margin:16px 0 6px}input,select,button{font:inherit}
-input[type=text],input[type=file],select{width:100%;padding:10px;border:1px solid #aabbb0;border-radius:6px;background:white}
-button{cursor:pointer;border:1px solid #aabbb0;background:white;color:var(--green);border-radius:7px;padding:8px 15px}
-.primary{background:var(--green);color:white;border-color:var(--green);margin-top:16px}.file{margin:8px 0;overflow-wrap:anywhere}
-.note{background:#edf3ea;padding:16px 18px;border-left:3px solid var(--green);margin:16px 0}.warn{color:#80551b}
-details{margin:14px 0}summary{cursor:pointer;font-weight:600}.stages{display:flex;gap:10px;list-style:none;padding:0;flex-wrap:wrap;color:#66766e}
-.stages li{padding:5px 12px;border:1px solid var(--line);border-radius:18px}.stages [aria-current]{background:var(--green);color:white}
-footer{border-top:1px solid var(--line);font-size:14px}footer section{display:flex;gap:10px;align-items:center;flex-wrap:wrap}footer select{width:auto;max-width:100%}footer label{margin:0}
-:focus-visible{outline:3px solid #4a7d97;outline-offset:2px}
-</style>
+<title>科研 RSI 任务 · 库帕思语匠 × 书生·端砚</title>
+<link rel="stylesheet" href="workspace.css">
 </head>
 <body>
-<header><strong>书生·端砚</strong><span>库帕思语匠合作专区</span></header>
+<header class="mast"><div class="mast-inner"><img src="duanyan.svg" width="115" height="32" alt="书生·端砚"><span class="workspace-name">揭榜任务</span></div></header>
 <main>
-<h1>科研题目验证</h1>
-<p>提交你的研究题目和附件，端砚会按任务要求进行验证。你可以在这里查看进度、评审结论和修改建议。</p>
-<div class="context" aria-label="来自语匠的任务信息"><span>当前专家　林青（示例）</span><span>所属组织　科学计算研究小组（示例）</span><span>当前任务　科研 RSI 任务</span></div>
-<div id="app"></div>
+<p class="crumb">库帕思语匠 <span aria-hidden="true">/</span> 我的揭榜任务</p>
+<section class="overview" aria-labelledby="task-name">
+<div class="task-head"><h1 id="task-name">科研 RSI 任务</h1><span id="state" role="status"></span></div>
+<div class="summary-body">
+<dl class="identity"><div><dt>当前专家</dt><dd>林青 <small>（示例）</small></dd></div><div><dt>所属组织</dt><dd>科学计算研究小组 <small>（示例）</small></dd></div></dl>
+<div id="next" aria-live="polite"></div>
+</div></section>
+<div class="work-area"><aside aria-labelledby="progress-title"><h2 id="progress-title">任务进度</h2><ol id="steps"></ol></aside><div id="app"></div></div>
 </main>
 <footer><details><summary>演示设置</summary><p>本页模拟语匠登录和题目验证流程。几秒内即可预览各阶段，进度保存在当前浏览器。附件仅保留文件名和大小。</p>
 <section><label for="scenario">下次提交的演示场景</label><select id="scenario">
 <option value="pass">全流程通过</option><option value="precheck">题目预审需修改</option><option value="revise">产物评审需修改</option><option value="unsolved">模型未解出</option><option value="reviewError">题目预审服务异常</option><option value="runError">任务运行异常</option><option value="evalError">产物评审服务异常</option></select><button id="reset" type="button">重置演示</button></section></details></footer>
-<script src="demo.js"></script>
-</body></html>
+<script src="demo.js"></script></body></html>

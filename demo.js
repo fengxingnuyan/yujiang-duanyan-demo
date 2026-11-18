@@ -57,31 +57,63 @@ function report(round) {
 function history() {
   return task.rounds.slice(0,-1).map((r,i)=>`<details><summary>第 ${i+1} 轮 · ${escapeText(r.title)} · ${progress(r,Date.now())}</summary>${report(r)}</details>`).join('');
 }
+const stepNames = ['提交题目', '题目预审', '任务运行', '产物评审'];
+function updateOverview(round, status, editing) {
+  let step = phases.indexOf(status) + 1;
+  let label = status;
+  let hint = '下一步';
+  let action = '等待平台复核';
+  let tone = 'active';
+  if (editing) {
+    step = 0;
+    label = round ? '待重新提交' : '待提交';
+    action = round ? '按反馈修改并重新提交' : '填写题目名称并添加附件';
+  } else if (phases.includes(status)) {
+    hint = '建议回访日期';
+    action = round.revisit;
+  } else if (status === '任务已完成') {
+    step = stepNames.length;
+    tone = 'done';
+    action = '查看本轮评测报告';
+  } else {
+    tone = 'attention';
+    if (status.startsWith('预审')) step = 1;
+    else if (status === '任务运行异常' || status === '模型未解出') step = 2;
+    else step = 3;
+    if (needsRevision(status)) action = '查看修改清单并修订题目';
+  }
+  const state = document.querySelector('#state');
+  if (state.textContent !== label) state.textContent = label;
+  state.dataset.tone = tone;
+  document.querySelector('#next').innerHTML = `<span class="caption">${hint}</span><strong>${escapeText(action)}</strong>`;
+  document.querySelector('#steps').innerHTML = stepNames.map((name, i) =>
+    `<li ${i === step ? 'aria-current="step"' : ''} class="${i < step ? 'done' : ''}"><span class="dot" aria-hidden="true">${i < step ? '✓' : i + 1}</span>${name}</li>`
+  ).join('');
+}
 function form() {
   const last = task.rounds.at(-1);
   return `<form class="panel" id="question"><div class="row"><h2>${last ? '修改科研题目' : '提交科研题目'}</h2>${last ? '' : '<button type="button" id="sample">填入示例材料</button>'}</div>
-  ${last ? report(last) : ''}
-  <label for="title">题目名称</label><input id="title" type="text" required maxlength="200" value="${escapeText(task.title)}">
-  <label for="files">题目附件</label><input id="files" type="file" multiple><div id="fileList">${fileList(true)}</div>
+  ${last ? report(last) : '<p class="help">预审通过后，端砚会自动运行题目并评审产物。</p>'}
+  <label for="title">题目名称</label><input id="title" type="text" required maxlength="200" placeholder="输入本次验证的研究题目名称" value="${escapeText(task.title)}">
+  <label for="files">题目附件</label><label class="upload">选择题目文件<small>可同时添加题目说明和相关附件</small><input id="files" type="file" multiple></label><div id="fileList">${fileList(true)}</div>
   <details><summary>合作说明与材料用途</summary><p>语匠提供专家、组织及任务信息。合作任务使用题目和附件进行验证，按双方约定记录运行过程并交付验证结果。本演示仅使用本机示例进度。</p></details>
   <p id="error" class="warn" role="alert"></p><button class="primary">${last ? '重新提交题目' : '提交题目'}</button></form>${history()}`;
 }
 function statusView(round, status) {
   const index = phases.indexOf(status);
-  return `<section class="panel"><p class="muted">第 ${task.rounds.length} 轮 · ${escapeText(round.title)}</p>
-  <h2 aria-live="polite">${index >= 0 ? '题目已提交' : needsRevision(status) ? '题目需修改' : status}</h2>
-  <p><strong>当前状态　${status}</strong></p>
-  ${index >= 0 ? `<ol class="stages">${phases.map((name,i)=>`<li ${i===index?'aria-current="step"':''}>${name}</li>`).join('')}</ol>
-  <div class="note"><strong>建议回访日期　${escapeText(round.revisit)}</strong><br>你可以关闭页面，届时从语匠的这项任务进入，查看最新进展。如果需要修改题目，修改清单会显示在这里。</div>` : report(round)}
+  const message = ['评审智能体正在核对题目说明和验收条件。','题目已通过预审，端砚正在运行实验。','实验已结束，评审智能体正在核验产物。'];
+  return `<section class="panel"><span class="caption">第 ${task.rounds.length} 轮提交</span><h2>${escapeText(round.title)}</h2>
+  ${index >= 0 ? `<p>${message[index]}</p><div class="note">你可以关闭页面，按建议日期从库帕思语匠的原任务入口回来查看进展。</div>` : report(round)}
   ${needsRevision(status) ? '<button id="edit" class="primary">修改题目并重新提交</button>' : ''}
   <details><summary>本轮提交材料</summary><p>${round.files.map(f=>escapeText(f.name)).join('<br>')}</p></details></section>${history()}`;
 }
 function render() {
   clearTimeout(timer);
   const last = task.rounds.at(-1);
-  if (task.editing || !last) { app.innerHTML = form(); return; }
+  if (task.editing || !last) { updateOverview(last, '', true); app.innerHTML = form(); return; }
   const now = Date.now();
   const status = progress(last, now);
+  updateOverview(last, status, false);
   app.innerHTML = statusView(last,status);
   const index = phases.indexOf(status);
   if (index >= 0) timer = setTimeout(render, Math.max(10,last.time+(index+1)*stageDuration-now));
