@@ -1,9 +1,11 @@
 const app = document.querySelector('#app');
 const scenario = document.querySelector('#scenario');
 const storageKey = 'yujiang-demo:v7:expert-example:rsi-example';
-const phases = ['题目预审中', '任务运行中', '产物评审中'];
+const phases = ['题目预审中', '题目运行中', '题目评审中'];
 const stageDuration = 4500;
-const blank = () => ({title:'', files:[], rounds:[], editing:true});
+const upload = {count:3, sizeMB:10, extensions:['pdf','docx','md','txt','csv','json','xlsx','png','jpg','jpeg','zip']};
+const uploadHint = `最多 ${upload.count} 份，每份不超过 ${upload.sizeMB} MB。支持 ${upload.extensions.join('、').toUpperCase()}。代码及其他格式可打包为 ZIP。`;
+const blank = () => ({title:'', domain:'', files:[], rounds:[], editing:true});
 let timer;
 let task = restore();
 function restore() {
@@ -23,13 +25,21 @@ function progress(round, now) {
   const step = Math.max(0, Math.floor((now - round.time) / stageDuration));
   if (step === 0) return phases[0];
   if (round.scenario === 'precheck') return '预审需修改';
-  if (round.scenario === 'reviewError') return '预审服务异常';
   if (step === 1) return phases[1];
-  if (round.scenario === 'runError') return '任务运行异常';
-  if (round.scenario === 'unsolved') return '模型未解出';
   if (step === 2) return phases[2];
-  if (round.scenario === 'evalError') return '产物评审服务异常';
   return round.scenario === 'revise' ? '评审需修改' : '任务已完成';
+}
+function attachmentErrors(files) {
+  const errors = [];
+  if (files.length > upload.count) errors.push(`本轮最多可添加 ${upload.count} 份附件，当前共 ${files.length} 份。`);
+  for (const file of files) {
+    const dot = file.name.lastIndexOf('.');
+    if (dot < 0 || !upload.extensions.includes(file.name.slice(dot + 1).toLowerCase())) {
+      errors.push(`《${file.name}》格式不支持，可打包为 ZIP 后添加。`);
+    }
+    if (file.size > upload.sizeMB * 1024 * 1024) errors.push(`《${file.name}》超过 ${upload.sizeMB} MB，请压缩后再添加。`);
+  }
+  return errors;
 }
 function fileList(editable) {
   return task.files.map((f,i) => `<div class="row file"><span>${escapeText(f.name)} · ${Math.ceil(f.size/1024)} KB</span>${editable ? `<button type="button" data-remove="${i}">移除</button>` : ''}</div>`).join('');
@@ -47,40 +57,41 @@ function issues(round) {
   ];
   return '<ol>'+entries.map(([where,reason,fix])=>`<li><strong>${name} · ${where}</strong><p>判断依据（示例）：${reason}<br>修改要求：${fix}</p></li>`).join('')+'</ol>';
 }
-function report(round) {
-  const stage = progress(round, Date.now());
-  if (needsRevision(stage)) return `<h3>${stage === '预审需修改' ? '题目预审反馈' : '产物评测报告'} · 题目需修改</h3>${issues(round)}`;
-  if (stage === '任务已完成') return '<h3>产物评测报告</h3><p>本轮模拟评审通过。运行结果、验证说明和题目版本已对应，预期交付项齐全。</p>';
-  if (stage === '模型未解出') return '<p>本轮模型未得到可验证的解。平台将复核运行结果，你可以稍后查看进展。</p>';
-  return '<p>平台将排查该阶段的服务异常。已提交的题目和附件已保留，你可以从语匠原入口回来查看。</p>';
+function report(round, stage = progress(round, Date.now()), expandIssues = true) {
+  if (stage === phases[0]) return '';
+  const precheckFailed = stage === '预审需修改';
+  const precheck = `<details class="report" data-report="precheck" ${precheckFailed && expandIssues ? 'open' : ''}><summary>题目预审报告 · ${precheckFailed ? '需修改' : '已通过'}</summary>
+    ${precheckFailed ? issues(round) : '<p>题目说明列出了研究目标、输入条件和验收标准，现有材料可以用于运行验证。</p>'}</details>`;
+  if (stage !== '评审需修改' && stage !== '任务已完成') return precheck;
+  const revise = needsRevision(stage);
+  return `<details class="report" data-report="final" ${expandIssues ? 'open' : ''}><summary>题目评审报告 · ${revise ? '需修改' : '已通过'}</summary>
+    ${revise ? issues(round) : '<p>已结合本轮运行记录核验题目说明、输入条件与验收方法，题目符合本次任务要求。</p>'}</details>${precheck}`;
 }
 function history() {
   return task.rounds.slice(0,-1).map((r,i)=>`<details><summary>第 ${i+1} 轮 · ${escapeText(r.title)} · ${progress(r,Date.now())}</summary>${report(r)}</details>`).join('');
 }
-const stepNames = ['提交题目', '题目预审', '任务运行', '产物评审'];
+const stepNames = ['提交题目', '题目预审', '题目运行', '题目评审'];
 function updateOverview(round, status, editing) {
   let step = phases.indexOf(status) + 1;
   let label = status;
   let hint = '下一步';
-  let action = '等待平台复核';
+  let action;
   let tone = 'active';
   if (editing) {
     step = 0;
     label = round ? '待重新提交' : '待提交';
-    action = round ? '按反馈修改并重新提交' : '填写题目名称并添加附件';
+    action = round ? '按反馈修改并重新提交' : '填写题目名称、领域并添加附件';
   } else if (phases.includes(status)) {
     hint = '建议回访日期';
     action = round.revisit;
   } else if (status === '任务已完成') {
     step = stepNames.length;
     tone = 'done';
-    action = '查看本轮评测报告';
+    action = '查看题目评审报告';
   } else {
     tone = 'attention';
-    if (status.startsWith('预审')) step = 1;
-    else if (status === '任务运行异常' || status === '模型未解出') step = 2;
-    else step = 3;
-    if (needsRevision(status)) action = '查看修改清单并修订题目';
+    step = status === '预审需修改' ? 1 : 3;
+    action = '按报告修改并重新提交';
   }
   const state = document.querySelector('#state');
   if (state.textContent !== label) state.textContent = label;
@@ -93,18 +104,22 @@ function updateOverview(round, status, editing) {
 function form() {
   const last = task.rounds.at(-1);
   return `<form class="panel" id="question"><div class="row"><h2>${last ? '修改科研题目' : '提交科研题目'}</h2>${last ? '' : '<button type="button" id="sample">填入示例材料</button>'}</div>
-  ${last ? report(last) : '<p class="help">预审通过后，端砚会自动运行题目并评审产物。</p>'}
+  <p class="help">${last ? '更新下方材料后重新提交，新一轮将从题目预审开始。' : '预审通过后，端砚会自动运行题目，并依据运行记录评审题目。'}</p>
   <label for="title">题目名称</label><input id="title" type="text" required maxlength="200" placeholder="输入本次验证的研究题目名称" value="${escapeText(task.title)}">
-  <label for="files">题目附件</label><label class="upload">选择题目文件<small>可同时添加题目说明和相关附件</small><input id="files" type="file" multiple></label><div id="fileList">${fileList(true)}</div>
+  <label for="domain">题目领域</label><input id="domain" type="text" required maxlength="80" list="domains" placeholder="选择或输入研究领域" value="${escapeText(task.domain || '')}">
+  <datalist id="domains">${['数学','物理学','化学','材料科学','生命科学','计算机科学','地球科学','交叉学科'].map(name=>`<option value="${name}"></option>`).join('')}</datalist>
+  <label for="files">题目附件</label><label class="upload">选择题目文件<input id="files" type="file" multiple aria-describedby="upload-hint" accept="${upload.extensions.map(ext=>'.'+ext).join(',')}"></label><p id="upload-hint" class="help">${uploadHint}</p><p id="file-error" class="warn" role="alert"></p><div id="fileList">${fileList(true)}</div>
+  ${last ? report(last, progress(last, Date.now()), false) : ''}
   <details><summary>合作说明与材料用途</summary><p>语匠提供专家、组织及任务信息。合作任务使用题目和附件进行验证，按双方约定记录运行过程并交付验证结果。本演示仅使用本机示例进度。</p></details>
   <p id="error" class="warn" role="alert"></p><button class="primary">${last ? '重新提交题目' : '提交题目'}</button></form>${history()}`;
 }
 function statusView(round, status) {
   const index = phases.indexOf(status);
-  const message = ['评审智能体正在核对题目说明和验收条件。','题目已通过预审，端砚正在运行实验。','实验已结束，评审智能体正在核验产物。'];
-  return `<section class="panel"><span class="caption">第 ${task.rounds.length} 轮提交</span><h2>${escapeText(round.title)}</h2>
-  ${index >= 0 ? `<p>${message[index]}</p><div class="note">你可以关闭页面，按建议日期从库帕思语匠的原任务入口回来查看进展。</div>` : report(round)}
-  ${needsRevision(status) ? '<button id="edit" class="primary">修改题目并重新提交</button>' : ''}
+  const message = ['评审智能体正在核对题目说明和验收条件，预审结束后可在这里查看报告。','题目已通过预审，端砚正在运行实验。','评审智能体正在结合题目要求、运行记录和实验结果进行评审。'];
+  return `<section class="panel"><span class="caption">第 ${task.rounds.length} 轮提交${round.domain ? ' · '+escapeText(round.domain) : ''}</span><h2>${escapeText(round.title)}</h2>
+  ${needsRevision(status) ? '<div class="revision-bar"><strong>本轮题目需要修改</strong><button id="edit" class="primary">修改题目与附件</button></div>' : ''}
+  ${index >= 0 ? `<p>${message[index]}</p><div class="note">你可以关闭页面，按建议日期从库帕思语匠的原任务入口回来查看进展。</div>` : ''}
+  ${report(round, status)}
   <details><summary>本轮提交材料</summary><p>${round.files.map(f=>escapeText(f.name)).join('<br>')}</p></details></section>${history()}`;
 }
 function render() {
@@ -114,30 +129,44 @@ function render() {
   const now = Date.now();
   const status = progress(last, now);
   updateOverview(last, status, false);
+  const openPrecheck = app.querySelector('.panel > [data-report="precheck"][open]') && !task.editing;
   app.innerHTML = statusView(last,status);
+  if (openPrecheck) app.querySelector('.panel > [data-report="precheck"]')?.setAttribute('open','');
   const index = phases.indexOf(status);
   if (index >= 0) timer = setTimeout(render, Math.max(10,last.time+(index+1)*stageDuration-now));
 }
 app.addEventListener('input', e => {
-  if (e.target.id === 'title') { task.title=e.target.value; save(); }
+  if (e.target.id === 'title' || e.target.id === 'domain') { task[e.target.id]=e.target.value; save(); }
 });
 app.addEventListener('change', e => {
   if (e.target.id !== 'files') return;
+  const files = [...task.files];
   for (const {name,size} of e.target.files) {
-    if (!task.files.some(f=>f.name===name && f.size===size)) task.files.push({name,size});
+    if (!files.some(f=>f.name===name && f.size===size)) files.push({name,size});
   }
   e.target.value='';
+  const errors = attachmentErrors(files);
+  if (errors.length) {
+    document.querySelector('#file-error').textContent = '本次选择未添加。' + errors.join(' ');
+    return;
+  }
+  task.files = files;
   save();
   render();
 });
 app.addEventListener('click', e => {
   if (e.target.id === 'sample') {
     task.title='带约束的二次优化问题';
+    task.domain='数学';
     task.files=[{name:'研究题目说明.pdf',size:245760}];
   } else if (e.target.hasAttribute('data-remove')) {
     task.files.splice(Number(e.target.dataset.remove),1);
   } else if (e.target.id === 'edit') {
     task.editing=true;
+    save();
+    render();
+    document.querySelector('#title').focus();
+    return;
   } else return;
   save();
   render();
@@ -145,12 +174,17 @@ app.addEventListener('click', e => {
 app.addEventListener('submit', e => {
   e.preventDefault();
   if (!task.editing) return;
-  if (!task.title.trim() || !task.files.length) {
-    document.querySelector('#error').textContent='请填写题目名称，并至少添加一份题目附件。';
+  if (!task.title.trim() || !task.domain?.trim() || !task.files.length) {
+    document.querySelector('#error').textContent='请填写题目名称、题目领域，并至少添加一份附件。';
+    return;
+  }
+  const errors = attachmentErrors(task.files);
+  if (errors.length) {
+    document.querySelector('#file-error').textContent = errors.join(' ');
     return;
   }
   const time = Date.now();
-  task.rounds.push({title:task.title.trim(),files:task.files.map(f=>({...f})),time,revisit:revisitDate(time),scenario:scenario.value});
+  task.rounds.push({title:task.title.trim(),domain:task.domain.trim(),files:task.files.map(f=>({...f})),time,revisit:revisitDate(time),scenario:scenario.value});
   task.editing=false;
   save();
   render();

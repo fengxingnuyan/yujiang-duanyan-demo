@@ -35,7 +35,7 @@ dd,#next strong {font-size:17px;font-weight:600}
 small,.muted,.help {color:var(--muted)}
 small,.help {font-size:14px}
 #next {border-left:2px solid #c4d4f2;padding-left:15px;min-width:24%}
-.work-area {display:grid;grid-template-columns:185px minmax(0,1fr);margin-top:18px;overflow:hidden}
+.work-area {display:grid;grid-template-columns:185px minmax(0,1fr);margin-top:18px;overflow:clip}
 aside {padding:24px;background:#f7f9fb;border-right:1px solid var(--line)}
 aside h2 {font-size:16px}
 #steps {list-style:none;padding:0;margin-top:20px}
@@ -68,6 +68,10 @@ details p,.panel p,.panel ol {margin:7px 0}
 .panel li+li {margin-top:12px}
 .panel h3 {margin-top:14px}
 .note {margin:18px 0;background:#f3f6fb;padding:12px 16px;border-radius:6px}
+.revision-bar {position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#fff8e9;border-block:1px solid #e8d8b4;margin:12px 0;padding:10px 12px}
+.revision-bar .primary {margin:0;font-size:15px}
+.report {padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:white}
+.report summary {font-weight:600;color:var(--ink)}
 .warn {color:#923b17}
 footer {padding-bottom:30px}
 footer details {margin:0}
