@@ -125,7 +125,7 @@ function updateOverview(round, status, editing) {
 function form() {
   const last = task.rounds.at(-1);
   return `<form class="panel" id="question"><div class="row"><h2>${last ? '修改科研题目' : '提交科研题目'}</h2>${last ? '' : '<button type="button" id="sample">填入示例材料</button>'}</div>
-  <p class="help">${last ? '更新下方材料后重新提交，新一轮将从题目预审开始。' : '预审通过后，端砚会自动运行题目，并依据运行记录评审题目。'}</p>
+  <p class="help">${last ? '更新下方材料后重新提交，新一轮将从题目预审开始。' : '预审通过后，可在「我的题目」查看运行进度。本轮运行结果回传后，系统会自动开始评审。'}</p>
   <label for="title">题目名称</label><input id="title" type="text" required maxlength="200" placeholder="输入本次验证的研究题目名称" value="${escapeText(task.title)}">
   <label for="domain">题目领域</label><input id="domain" type="text" required maxlength="80" list="domains" placeholder="选择或输入研究领域" value="${escapeText(task.domain || '')}">
   <datalist id="domains">${['数学','物理学','化学','材料科学','生命科学','计算机科学','地球科学','交叉学科'].map(name=>`<option value="${name}"></option>`).join('')}</datalist>
@@ -136,10 +136,14 @@ function form() {
 }
 function statusView(round, status) {
   const index = phases.indexOf(status);
-  const message = ['评审智能体正在核对题目说明和验收条件，预审结束后可在这里查看报告。','题目已通过预审，端砚正在运行实验。','评审智能体正在结合题目要求、运行记录和实验结果进行评审。'];
+  const message = {
+    '题目预审中': '评审智能体正在核对题目说明和验收条件，预审结束后可在这里查看报告。',
+    '题目评审中': '本轮运行结果已收到，评审智能体正在根据题目要求核验结果。'
+  };
   return `<section class="panel"><span class="caption">第 ${task.rounds.length} 轮提交${round.domain ? ' · '+escapeText(round.domain) : ''}</span><h2>${escapeText(round.title)}</h2>
   ${needsRevision(status) ? '<div class="revision-bar"><strong>本轮题目需要修改</strong><button id="edit" class="primary">修改题目与附件</button></div>' : ''}
-  ${index >= 0 ? `<p>${message[index]}</p><div class="note">你可以关闭页面，按建议日期从库帕思语匠的原任务入口回来查看进展。</div>` : ''}
+  ${message[status] ? `<p>${message[status]}</p>` : ''}
+  ${index >= 0 ? '<div class="note">你可以关闭页面，按建议日期从库帕思语匠的原任务入口回来查看进展。</div>' : ''}
   ${report(round, status)}
   <details><summary>本轮提交材料</summary><p>${round.files.map(f=>escapeText(f.name)).join('<br>')}</p></details></section>${roundHistory()}`;
 }
