@@ -230,7 +230,7 @@ function renderManager() {
     const title = question.title.trim() || '未命名题目';
     const id = escapeText(question.id);
     const html = `<li class="question-row"><div><h3><a href="#q/${id}">${escapeText(title)}</a></h3>
-      <small>${escapeText(question.domain || '领域待填写')}${round ? ' · 第 '+question.rounds.length+' 轮' : ''}</small></div>
+      <div class="question-meta">${question.domain?.trim() ? `<span class="subject-tag">${escapeText(question.domain.trim())}</span>` : '<small>领域待填写</small>'}${round ? `<small>第 ${question.rounds.length} 轮</small>` : ''}</div></div>
       <div><span class="list-status ${revision ? 'attention' : complete ? 'complete' : ''}">${complete ? '评审通过' : status}</span>
       ${index >= 0 ? '<small class="revisit">建议回访　'+escapeText(round.revisit)+'</small>' : ''}</div>
       <div class="actions"><a class="action-link" href="#q/${id}">${action}</a>${round ? '' : `<details class="more" data-id="${id}"><summary>更多</summary><button type="button" data-delete="${id}">删除草稿</button></details>`}</div></li>`;
@@ -274,7 +274,7 @@ function route() {
   document.querySelector('#state').hidden = !task;
   document.querySelector('#next').hidden = !task;
   document.querySelector('#requirements').hidden = Boolean(task);
-  document.querySelector('#location-label').innerHTML = task ? '<a href="#">← 返回我的题目</a>' : '我的题目';
+  document.querySelector('#location-label').innerHTML = task ? '<a href="#">← 返回我的题目</a>' : '我的任务';
   app.replaceChildren();
   render();
 }

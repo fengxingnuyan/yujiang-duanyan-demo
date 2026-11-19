@@ -35,6 +35,8 @@ a {color:var(--blue);text-underline-offset:3px}
 .question-row h3 a {color:var(--ink);text-decoration:none}
 .question-row h3 a:hover,.action-link:hover {text-decoration:underline}
 .question-row small {overflow-wrap:anywhere}
+.question-meta {display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:5px}
+.subject-tag {display:inline-block;max-width:100%;overflow-wrap:anywhere;padding:2px 9px;border:1px solid #c4d6f1;border-radius:5px;background:#edf3fe;color:#254d84;font-size:14px;font-weight:600;line-height:1.5}
 .list-status {color:var(--blue);font-weight:600}
 .list-status.attention {color:#86500b}
 .list-status.complete {color:#24644b}
