@@ -212,6 +212,11 @@ app.addEventListener('submit', e => {
   render();
   window.scrollTo(0,0);
 });
+const disciplineColors = new Map([
+  ['数学','indigo'], ['生命科学','teal'], ['材料科学','plum'],
+  ['物理学','blue'], ['化学','plum'], ['计算机科学','indigo'],
+  ['地球科学','teal'], ['交叉学科','blue']
+]);
 function renderManager() {
   const questions = Object.keys(localStorage).filter(key=>key.startsWith(questionPrefix))
     .map(key=>JSON.parse(localStorage.getItem(key))).filter(Boolean);
@@ -229,8 +234,10 @@ function renderManager() {
     const action = !round ? '继续编辑' : revision ? '查看反馈并修改' : complete ? '查看评审报告' : '查看进度';
     const title = question.title.trim() || '未命名题目';
     const id = escapeText(question.id);
-    const html = `<li class="question-row"><div><h3><a href="#q/${id}">${escapeText(title)}</a></h3>
-      <div class="question-meta">${question.domain?.trim() ? `<span class="subject-tag">${escapeText(question.domain.trim())}</span>` : '<small>领域待填写</small>'}${round ? `<small>第 ${question.rounds.length} 轮</small>` : ''}</div></div>
+    const domain = question.domain?.trim() || round?.domain?.trim();
+    const tag = domain ? `<span class="subject-tag" data-color="${disciplineColors.get(domain) || 'blue'}">${escapeText(domain)}</span>` : '';
+    const html = `<li class="question-row"><div><div class="question-title">${tag}<h3><a href="#q/${id}">${escapeText(title)}</a></h3></div>
+      ${!domain || round ? `<div class="question-meta">${domain ? '' : '<small>领域待填写</small>'}${round ? `<small>第 ${question.rounds.length} 轮</small>` : ''}</div>` : ''}</div>
       <div><span class="list-status ${revision ? 'attention' : complete ? 'complete' : ''}">${complete ? '评审通过' : status}</span>
       ${index >= 0 ? '<small class="revisit">建议回访　'+escapeText(round.revisit)+'</small>' : ''}</div>
       <div class="actions"><a class="action-link" href="#q/${id}">${action}</a>${round ? '' : `<details class="more" data-id="${id}"><summary>更多</summary><button type="button" data-delete="${id}">删除草稿</button></details>`}</div></li>`;
