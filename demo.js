@@ -1,18 +1,39 @@
 const app = document.querySelector('#app');
 const scenario = document.querySelector('#scenario');
-const storageKey = 'yujiang-demo:v7:expert-example:rsi-example';
+const legacyKey = 'yujiang-demo:v7:expert-example:rsi-example';
+const questionPrefix = 'yujiang-demo:expert-example:V7T-79ecb8f6-456a-43:question:';
+const manager = document.querySelector('#manager');
 const phases = ['题目预审中', '题目运行中', '题目评审中'];
 const stageDuration = 4500;
 const upload = {count:3, sizeMB:10, extensions:['pdf','docx','md','txt','csv','json','xlsx','png','jpg','jpeg','zip']};
 const uploadHint = `最多 ${upload.count} 份，每份不超过 ${upload.sizeMB} MB。支持 ${upload.extensions.join('、').toUpperCase()}。代码及其他格式可打包为 ZIP。`;
 const blank = () => ({title:'', domain:'', files:[], rounds:[], editing:true});
 let timer;
-let task = restore();
-function restore() {
-  try { return JSON.parse(localStorage.getItem(storageKey)) || blank(); }
-  catch { return blank(); }
+let task;
+function readQuestion(id) {
+  return JSON.parse(localStorage.getItem(questionPrefix + id));
 }
-function save() { localStorage.setItem(storageKey, JSON.stringify(task)); }
+function migrateLegacyQuestion() {
+  const data = localStorage.getItem(legacyKey);
+  if (!data) return;
+  const old = JSON.parse(data);
+  if (old && (old.title || old.domain || old.files?.length || old.rounds?.length) && !readQuestion('legacy')) {
+    localStorage.setItem(questionPrefix+'legacy', JSON.stringify({...blank(), ...old, id:'legacy', updated:old.rounds?.at(-1)?.time || Date.now()}));
+  }
+  localStorage.removeItem(legacyKey);
+}
+function save() {
+  const stored = readQuestion(task.id);
+  if (stored?.version !== task.version || (!stored && task.id === 'legacy')) {
+    route();
+    return false;
+  }
+  task.updated = Date.now();
+  task.version = crypto.randomUUID();
+  localStorage.setItem(questionPrefix + task.id, JSON.stringify(task));
+  if (location.hash === '#new') window.history.replaceState(null, '', '#q/' + task.id);
+  return true;
+}
 function escapeText(value) {
   return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
 }
@@ -67,8 +88,8 @@ function report(round, stage = progress(round, Date.now()), expandIssues = true)
   return `<details class="report" data-report="final" ${expandIssues ? 'open' : ''}><summary>题目评审报告 · ${revise ? '需修改' : '已通过'}</summary>
     ${revise ? issues(round) : '<p>已结合本轮运行记录核验题目说明、输入条件与验收方法，题目符合本次任务要求。</p>'}</details>${precheck}`;
 }
-function history() {
-  return task.rounds.slice(0,-1).map((r,i)=>`<details><summary>第 ${i+1} 轮 · ${escapeText(r.title)} · ${progress(r,Date.now())}</summary>${report(r)}</details>`).join('');
+function roundHistory() {
+  return task.rounds.slice(0,-1).map((r,i)=>`<details><summary>第 ${i+1} 轮 · ${escapeText(r.title)} · ${progress(r,Date.now())}</summary><p>本轮附件　${r.files.map(f=>escapeText(f.name)).join('、')}</p>${report(r)}</details>`).join('');
 }
 const stepNames = ['提交题目', '题目预审', '题目运行', '题目评审'];
 function updateOverview(round, status, editing) {
@@ -111,7 +132,7 @@ function form() {
   <label for="files">题目附件</label><label class="upload">选择题目文件<input id="files" type="file" multiple aria-describedby="upload-hint" accept="${upload.extensions.map(ext=>'.'+ext).join(',')}"></label><p id="upload-hint" class="help">${uploadHint}</p><p id="file-error" class="warn" role="alert"></p><div id="fileList">${fileList(true)}</div>
   ${last ? report(last, progress(last, Date.now()), false) : ''}
   <details><summary>合作说明与材料用途</summary><p>语匠提供专家、组织及任务信息。合作任务使用题目和附件进行验证，按双方约定记录运行过程并交付验证结果。本演示仅使用本机示例进度。</p></details>
-  <p id="error" class="warn" role="alert"></p><button class="primary">${last ? '重新提交题目' : '提交题目'}</button></form>${history()}`;
+  <p id="error" class="warn" role="alert"></p>${last ? '' : '<p class="help submit-tip">提交后将自动开始预审，题目无法撤回或删除。若评审要求修改，可按报告修订后重新提交。</p>'}<button class="primary">${last ? '重新提交题目' : '提交题目'}</button></form>${roundHistory()}`;
 }
 function statusView(round, status) {
   const index = phases.indexOf(status);
@@ -120,10 +141,11 @@ function statusView(round, status) {
   ${needsRevision(status) ? '<div class="revision-bar"><strong>本轮题目需要修改</strong><button id="edit" class="primary">修改题目与附件</button></div>' : ''}
   ${index >= 0 ? `<p>${message[index]}</p><div class="note">你可以关闭页面，按建议日期从库帕思语匠的原任务入口回来查看进展。</div>` : ''}
   ${report(round, status)}
-  <details><summary>本轮提交材料</summary><p>${round.files.map(f=>escapeText(f.name)).join('<br>')}</p></details></section>${history()}`;
+  <details><summary>本轮提交材料</summary><p>${round.files.map(f=>escapeText(f.name)).join('<br>')}</p></details></section>${roundHistory()}`;
 }
 function render() {
   clearTimeout(timer);
+  if (!task) { renderManager(); return; }
   const last = task.rounds.at(-1);
   if (task.editing || !last) { updateOverview(last, '', true); app.innerHTML = form(); return; }
   const now = Date.now();
@@ -163,7 +185,7 @@ app.addEventListener('click', e => {
     task.files.splice(Number(e.target.dataset.remove),1);
   } else if (e.target.id === 'edit') {
     task.editing=true;
-    save();
+    if (!save()) return;
     render();
     document.querySelector('#title').focus();
     return;
@@ -190,14 +212,76 @@ app.addEventListener('submit', e => {
   render();
   window.scrollTo(0,0);
 });
-document.querySelector('#reset').addEventListener('click', () => {
-  task=blank();
-  scenario.value='pass';
-  save();
+function renderManager() {
+  const questions = Object.keys(localStorage).filter(key=>key.startsWith(questionPrefix))
+    .map(key=>JSON.parse(localStorage.getItem(key))).filter(Boolean);
+  const now = Date.now();
+  let refreshAt = Infinity;
+  let passed = 0;
+  const rows = questions.map(question=>{
+    const round = question.rounds.at(-1);
+    const status = round ? progress(round, now) : '草稿';
+    const index = phases.indexOf(status);
+    const revision = needsRevision(status);
+    const complete = status === '任务已完成';
+    if (complete) passed++;
+    if (index >= 0) refreshAt = Math.min(refreshAt, round.time + (index + 1) * stageDuration);
+    const action = !round ? '继续编辑' : revision ? '查看反馈并修改' : complete ? '查看评审报告' : '查看进度';
+    const title = question.title.trim() || '未命名题目';
+    const id = escapeText(question.id);
+    const html = `<li class="question-row"><div><h3><a href="#q/${id}">${escapeText(title)}</a></h3>
+      <small>${escapeText(question.domain || '领域待填写')}${round ? ' · 第 '+question.rounds.length+' 轮' : ''}</small></div>
+      <div><span class="list-status ${revision ? 'attention' : complete ? 'complete' : ''}">${complete ? '评审通过' : status}</span>
+      ${index >= 0 ? '<small class="revisit">建议回访　'+escapeText(round.revisit)+'</small>' : ''}</div>
+      <div class="actions"><a class="action-link" href="#q/${id}">${action}</a>${round ? '' : `<details class="more" data-id="${id}"><summary>更多</summary><button type="button" data-delete="${id}">删除草稿</button></details>`}</div></li>`;
+    return {html,revision,updated:question.updated};
+  });
+  rows.sort((a,b)=>Number(b.revision)-Number(a.revision) || b.updated-a.updated);
+  const openMenu = manager.querySelector('.more[open]')?.dataset.id;
+  manager.innerHTML = `<div class="list-heading"><div><h2 id="my-questions">我的题目</h2>${rows.length ? `<p class="help">共 ${rows.length} 道 · 已通过 ${passed} 道</p>` : ''}</div>
+    ${rows.length ? '<a class="new-question" href="#new">＋ 新建题目</a>' : ''}</div>
+    ${rows.length ? '<ul class="questions">'+rows.map(row=>row.html).join('')+'</ul>' : '<div class="empty"><p>你还没有为本任务创建题目。</p><a class="new-question" href="#new">新建第一道题</a></div>'}`;
+  if (openMenu) manager.querySelector(`.more[data-id="${CSS.escape(openMenu)}"]`)?.setAttribute('open','');
+  if (Number.isFinite(refreshAt)) timer = setTimeout(render, Math.max(10,refreshAt-Date.now()));
+}
+const deleteDialog = document.querySelector('#delete-dialog');
+let pendingDraft;
+manager.addEventListener('click', e=>{
+  const id = e.target.dataset.delete;
+  if (!id) return;
+  const draft = readQuestion(id);
+  if (!draft || draft.rounds.length) { render(); return; }
+  pendingDraft = draft;
+  document.querySelector('#delete-name').textContent = `《${draft.title.trim() || '未命名题目'}》将从我的题目中移除。`;
+  deleteDialog.returnValue = 'cancel';
+  deleteDialog.showModal();
+});
+deleteDialog.addEventListener('close', ()=>{
+  const draft = pendingDraft;
+  pendingDraft = null;
+  if (deleteDialog.returnValue !== 'delete' || !draft) return;
+  const current = readQuestion(draft.id);
+  if (current && current.version === draft.version && !current.rounds.length) localStorage.removeItem(questionPrefix+draft.id);
   render();
 });
+function route() {
+  const hash = location.hash;
+  if (hash === '#new') task = {...blank(), id:crypto.randomUUID()};
+  else task = hash.startsWith('#q/') ? readQuestion(hash.slice(3)) : null;
+  if (!task && hash) window.history.replaceState(null, '', location.pathname + location.search);
+  manager.hidden = Boolean(task);
+  document.querySelector('.work-area').hidden = !task;
+  document.querySelector('#state').hidden = !task;
+  document.querySelector('#next').hidden = !task;
+  document.querySelector('#requirements').hidden = Boolean(task);
+  document.querySelector('#location-label').innerHTML = task ? '<a href="#">← 返回我的题目</a>' : '我的题目';
+  app.replaceChildren();
+  render();
+}
 window.addEventListener('storage', e => {
-  if (e.key === storageKey) { task=restore(); render(); }
+  if (e.key === null || (e.key?.startsWith(questionPrefix) && (!task || e.key === questionPrefix + task.id))) route();
 });
-window.addEventListener('pageshow', () => { task=restore(); render(); });
-render();
+window.addEventListener('hashchange', () => { route(); window.scrollTo(0,0); });
+window.addEventListener('pageshow', route);
+migrateLegacyQuestion();
+route();

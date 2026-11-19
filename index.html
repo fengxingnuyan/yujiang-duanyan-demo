@@ -4,21 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>科研 RSI 任务 · 库帕思语匠 × 书生·端砚</title>
-<link rel="stylesheet" href="workspace.css?v=9">
+<link rel="stylesheet" href="workspace.css?v=10">
 </head>
 <body>
 <header class="mast"><div class="mast-inner"><img src="duanyan.svg" width="115" height="32" alt="书生·端砚"><span class="workspace-name">揭榜任务</span></div></header>
 <main>
-<p class="crumb">库帕思语匠 <span aria-hidden="true">/</span> 我的揭榜任务</p>
+<nav class="crumb" aria-label="当前位置">库帕思语匠 <span aria-hidden="true">/</span> <span id="location-label">我的题目</span></nav>
 <section class="overview" aria-labelledby="task-name">
-<div class="task-head"><h1 id="task-name">科研 RSI 任务</h1><span id="state" role="status"></span></div>
+<div class="task-head"><h1 id="task-name">科研RSI任务</h1><span id="state" role="status" hidden></span></div>
+<p class="task-meta">任务编号 V7T-79ecb8f6-456a-43 <span>发布方　库帕思</span><span>截止日期　2026-11-30</span></p>
 <div class="summary-body">
 <dl class="identity"><div><dt>当前专家</dt><dd>林青 <small>（示例）</small></dd></div><div><dt>所属组织</dt><dd>科学计算研究小组 <small>（示例）</small></dd></div></dl>
-<div id="next" aria-live="polite"></div>
-</div></section>
-<div class="work-area"><aside aria-labelledby="progress-title"><h2 id="progress-title">任务进度</h2><ol id="steps"></ol></aside><div id="app"></div></div>
+<div id="next" aria-live="polite" hidden></div>
+</div><details id="requirements"><summary>查看任务要求</summary><p>从真实科研中提出可在计算机上复现、可自动评分的优化或建模问题。请准备清晰的题面、研究数据与独立隐藏数据、可运行的初始方法与参考方法、自动打分器，以及运行环境与验证说明。</p><p>完整要求见库帕思语匠任务详情「需求文档」中的《RSI-任务书-v0.5.pdf》。</p></details></section>
+<section id="manager" aria-labelledby="my-questions"></section>
+<dialog id="delete-dialog" aria-labelledby="delete-title"><h2 id="delete-title">删除草稿？</h2><p id="delete-name"></p><form method="dialog" class="actions"><button value="cancel" autofocus>保留草稿</button><button value="delete">确认删除</button></form></dialog>
+<div class="work-area" hidden><aside aria-labelledby="progress-title"><h2 id="progress-title">题目进度</h2><ol id="steps"></ol></aside><div id="app"></div></div>
 </main>
 <footer><details><summary>演示设置</summary><p>本页模拟语匠登录和题目验证流程。几秒内即可预览各阶段，进度保存在当前浏览器。附件仅保留文件名和大小。</p>
 <section><label for="scenario">下次提交的演示场景</label><select id="scenario">
-<option value="pass">全流程通过</option><option value="precheck">题目预审需修改</option><option value="revise">题目评审需修改</option></select><button id="reset" type="button">重置演示</button></section></details></footer>
-<script src="demo.js?v=9"></script></body></html>
+<option value="pass">全流程通过</option><option value="precheck">题目预审需修改</option><option value="revise">题目评审需修改</option></select></section></details></footer>
+<script src="demo.js?v=10"></script></body></html>
